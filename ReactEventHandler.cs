@@ -29,6 +29,7 @@ namespace StartBot
                         var status = await ServerStateManager.Instance().GetState();
                         if(status.InstanceState.Code == 80)
                         {
+                            Console.WriteLine("User ID" + r.UserId + " initated a server start.");
                                 ThreadPool.QueueUserWorkItem(async delegate
                                 {
                                     try
