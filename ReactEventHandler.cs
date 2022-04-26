@@ -13,15 +13,17 @@ namespace StartBot
     public class ReactEventHandler
     {
         private bool debounce = false;
-        public async Task Handle(Cacheable<IUserMessage, ulong> msg, ISocketMessageChannel chan, SocketReaction r)
+        public async Task Handle(Cacheable<IUserMessage, ulong>? msg, ISocketMessageChannel? chan, SocketReaction? r, bool web = false)
         {
-            if (r.UserId == Program._client.CurrentUser.Id) { return; }
-            if(r.MessageId == BotConfig.GetCachedConfig().InternalMessageId)
+            if (!web && r.UserId == Program._client.CurrentUser.Id) { return; }
+            if(web || r.MessageId == BotConfig.GetCachedConfig().InternalMessageId)
             {
-                if(r.Emote.Name == "🔄")
+                if(web || r.Emote.Name == "🔄")
                 {
-                    var actualMessage = await chan.GetMessageAsync(r.MessageId);
-                    await actualMessage.RemoveReactionAsync(r.Emote, r.UserId);
+                    if (!web) {
+                        var actualMessage = await chan.GetMessageAsync(r.MessageId);
+                        await actualMessage.RemoveReactionAsync(r.Emote, r.UserId);
+                    }
 
                     if(!debounce && !ServerStateManager.Instance().IsWorking) // ignore attempts to spam the button
                     {
@@ -29,7 +31,10 @@ namespace StartBot
                         var status = await ServerStateManager.Instance().GetState();
                         if(status.InstanceState.Code == 80)
                         {
-                            Console.WriteLine("User ID" + r.UserId + " initated a server start.");
+                            if (!web)
+                            {
+                                Console.WriteLine("User ID" + r.UserId + " initated a server start.");
+                            }
                                 ThreadPool.QueueUserWorkItem(async delegate
                                 {
                                     try

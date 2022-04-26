@@ -8,12 +8,19 @@ using System.Threading.Tasks;
 
 namespace StartBot
 {
+    public enum ServerState
+    {
+        STOPPED, STARTING, STARTED, STOPPING
+    }
+
     public class Embeds
     {
+        public static ServerState CurrentEmbed = ServerState.STOPPED;
         private Embeds() { }
         public static Embed ServerStopped(string footer = "")
         {
             var builder = new EmbedBuilder();
+            CurrentEmbed = ServerState.STOPPED;
             return builder.WithTitle(BotConfig.GetCachedConfig().Lang.EmbedTitle)
                 .WithDescription(BotConfig.GetCachedConfig().Lang.EmbedServerStopped)
                 .WithColor(Discord.Color.Red)
@@ -26,6 +33,7 @@ namespace StartBot
             var footer = new StringBuilder(BotConfig.GetCachedConfig().Lang.EmbedFooter);
             footer.Replace("%ip%", BotConfig.GetCachedConfig().Minecraft.MinecraftServerIP);
             footer.Replace("%port%", BotConfig.GetCachedConfig().Minecraft.MinecraftServerPort.ToString());
+            CurrentEmbed = ServerState.STARTING;
             var builder = new EmbedBuilder();
             return builder.WithTitle(BotConfig.GetCachedConfig().Lang.EmbedTitle)
                 .WithDescription(BotConfig.GetCachedConfig().Lang.EmbedStartingServer)
@@ -41,6 +49,7 @@ namespace StartBot
             footer.Replace("%ip%", BotConfig.GetCachedConfig().Minecraft.MinecraftServerIP);
             footer.Replace("%port%", BotConfig.GetCachedConfig().Minecraft.MinecraftServerPort.ToString());
             var builder = new EmbedBuilder();
+            CurrentEmbed = ServerState.STARTED;
             return builder.WithTitle(BotConfig.GetCachedConfig().Lang.EmbedTitle)
                 .WithDescription(BotConfig.GetCachedConfig().Lang.EmbedServerStarted)
                 .WithColor(Discord.Color.Green)
@@ -55,6 +64,7 @@ namespace StartBot
             var footer = new StringBuilder(BotConfig.GetCachedConfig().Lang.EmbedFooter);
             footer.Replace("%ip%", BotConfig.GetCachedConfig().Minecraft.MinecraftServerIP);
             footer.Replace("%port%", BotConfig.GetCachedConfig().Minecraft.MinecraftServerPort.ToString());
+            CurrentEmbed = ServerState.STOPPING;
             return builder.WithTitle(BotConfig.GetCachedConfig().Lang.EmbedTitle)
                 .WithDescription(BotConfig.GetCachedConfig().Lang.EmbedServerStopping)
                 .WithColor(Discord.Color.Orange)

@@ -1,8 +1,11 @@
 ﻿
+using Amazon.EC2.Model;
 using Discord;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace StartBot
@@ -19,7 +22,7 @@ namespace StartBot
             {
                 Console.WriteLine(e.Message);
                 Console.WriteLine("A valid configuration file could not be found. Please create one at ./config.yml and enter in the appropriate values.");
-                Environment.Exit(1);
+                //Environment.Exit(1);
             }
             new Program().RunBotAsync().GetAwaiter().GetResult();
         }
@@ -73,12 +76,41 @@ namespace StartBot
             {
                 Console.WriteLine("Could not find guild specified in config file.");
             }
+            ThreadPool.QueueUserWorkItem(async delegate
+            {
+                await new WebServe().Run();
+            });
+            /*
+             * Stop the server in case the bot crashed.
+             */
+            Console.WriteLine("Attempting server start.");
+            try
+            {
+                var stopRequest = new StopInstancesRequest();
+                var request = new StopInstancesRequest();
+                request.InstanceIds = new List<string>()
+                        {
+                            BotConfig.GetCachedConfig().Aws.EC2InstanceId
+                        };
+                request.Force = false;
+                var response = await ServerStateManager.Instance().client.StopInstancesAsync(request);
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
         }
 
+        public static ReactEventHandler _reh = new ReactEventHandler();
+
+        private async Task HandleBotReactions(Cacheable<IUserMessage, ulong> msg, ISocketMessageChannel chan, SocketReaction r)
+        {
+            await _reh.Handle(msg, chan, r);
+        }
         public void RegisterEvents()
         {
             _client.Ready += Start;
-            _client.ReactionAdded += new ReactEventHandler().Handle;
+            _client.ReactionAdded += HandleBotReactions;
         }
 
         private Task _client_Log(LogMessage l)

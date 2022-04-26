@@ -13,7 +13,7 @@ namespace StartBot
     public class ServerStateManager
     {
 
-        private AmazonEC2Client client;
+        public AmazonEC2Client client;
         private ServerStateManager()
         {
             client = new AmazonEC2Client(new BasicAWSCredentials(BotConfig.GetCachedConfig().Aws.EC2AccessKey, BotConfig.GetCachedConfig().Aws.EC2AccessSecret), RegionEndpoint.GetBySystemName(BotConfig.GetCachedConfig().Aws.Region));
