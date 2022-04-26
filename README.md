@@ -32,7 +32,7 @@ discord:
     guildId: 
 lang:
     #The title used for messages.
-    embedTitle: 
+    embedTitle: Minecraft Server
     #URL to image used for messages. Optional
     embedImage: 
     embedFooter: The IP to connect is %ip%:%port%.
