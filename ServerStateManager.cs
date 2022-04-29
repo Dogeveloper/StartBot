@@ -23,6 +23,8 @@ namespace StartBot
 
         public bool IsWorking = false;
 
+        public bool StopDeferred = false;
+
 
         public static ServerStateManager Instance()
         {
@@ -56,6 +58,7 @@ namespace StartBot
                 var state = await this.GetState();
                 if (state.InstanceState.Code == 16) // 16 = instance started
                 {
+                    await Program.ModLog("MC AWS Server Started", "");
                     return true;
                 }
                 attempts++;
@@ -70,13 +73,19 @@ namespace StartBot
                 await Task.Delay((int) BotConfig.GetCachedConfig().PollingDelay);
                 MineStat ms = new MineStat(BotConfig.GetCachedConfig().Minecraft.MinecraftServerIP, BotConfig.GetCachedConfig().Minecraft.MinecraftServerPort);
                 Console.WriteLine("Current player count: " + ms.CurrentPlayers);
-                if(ms.CurrentPlayers == "0")
+                if (ms.CurrentPlayers == "0")
                 {
                     Console.WriteLine("Server player is count is zero. Sleeping, and checking again.");
-                    await Task.Delay((int) BotConfig.GetCachedConfig().StopServerDelay);
+                    await Task.Delay((int)BotConfig.GetCachedConfig().StopServerDelay);
+                    if (this.StopDeferred)
+                    {
+                        this.StopDeferred = false;
+                        continue;
+                    }
                     ms = new MineStat(BotConfig.GetCachedConfig().Minecraft.MinecraftServerIP, BotConfig.GetCachedConfig().Minecraft.MinecraftServerPort);
                     if (ms.ServerUp && ms.CurrentPlayers == "0")
                     {
+                        await Program.ModLog("MC Server Stopping", "");
                         Console.WriteLine("Player count is still zero. Stopping.");
                         await Embeds.EditMessage(Embeds.ServerStopping());
                         var stopRequest = new StopInstancesRequest();
@@ -98,6 +107,7 @@ namespace StartBot
                                 break;
                             }
                         }
+                        await Program.ModLog("MC Server Stopped", "");
                         await Embeds.EditMessage(Embeds.ServerStopped());
                         break;
                     }
@@ -109,6 +119,7 @@ namespace StartBot
         public async Task StartServer()
         {
             Console.WriteLine("Starting server.");
+            await Program.ModLog("MC Server Starting", "");
             IsWorking = true;
             await Embeds.EditMessage(Embeds.ServerStarting());
             var request = new StartInstancesRequest();
@@ -129,6 +140,7 @@ namespace StartBot
                         if(ms.ServerUp)
                         {
                             Console.WriteLine("MC Server up.");
+                            await Program.ModLog("MC Server is UP", "");
                             break;
                         }
                         Console.WriteLine("MC Server is not up.");

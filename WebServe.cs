@@ -56,7 +56,7 @@ namespace StartBot
                             //check token is valid
                             if(validTokens.Contains(userRequest["token"]))
                             {
-                                await Program._reh.Handle(null, null, null, true);
+                                await Program._reh.Handle(null, true);
                                 message = "Your request has been processed. You may need to refresh the page.";
                             }
                             else

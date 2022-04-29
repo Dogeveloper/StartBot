@@ -30,6 +30,16 @@ namespace StartBot
         public static DiscordSocketClient _client;
         public static IServiceProvider _services;
 
+
+        public static async Task ModLog(string title, string description)
+        {
+            var chan = _client.GetChannel(831964996287332352) as SocketTextChannel;
+
+            var embed = new EmbedBuilder().WithTitle(title).WithDescription(description).WithColor(Color.Blue).Build();
+
+            await chan.SendMessageAsync(embed: embed);
+        }
+
         public static IServiceProvider GetServices()
         {
             return _services;
@@ -53,14 +63,23 @@ namespace StartBot
         {
             if (_client.GetGuild(BotConfig.GetCachedConfig().Discord.GuildId) != null)
             {
+
                 var guild = _client.GetGuild(BotConfig.GetCachedConfig().Discord.GuildId);
+
+                var deferStopCommand = new SlashCommandBuilder();
+
+                deferStopCommand.WithName("deferstop");
+                deferStopCommand.WithDescription("Defers the server from stopping for five minutes.");
+                await guild.CreateApplicationCommandAsync(deferStopCommand.Build());
+
                 if (guild.GetTextChannel(BotConfig.GetCachedConfig().Discord.MessageChannelId) != null)
                 {
                     var chan = guild.GetTextChannel(BotConfig.GetCachedConfig().Discord.MessageChannelId);
                     if(BotConfig.GetCachedConfig().InternalMessageId == 0 || await chan.GetMessageAsync(BotConfig.GetCachedConfig().InternalMessageId) == null)
                     {
-                        var msg = await chan.SendMessageAsync(embed: Embeds.ServerStopped());
-                        await msg.AddReactionAsync(new Emoji("🔄"));
+                        var comps = new ComponentBuilder();
+                        comps.WithButton("Refresh Server", "STARTBOT_REFRESH", emote: new Emoji("🔄"));
+                        var msg = await chan.SendMessageAsync(embed: Embeds.ServerStopped(), components: comps.Build());
 
                         var cfg = BotConfig.GetCachedConfig();
                         cfg.InternalMessageId = (ulong) msg.Id;
@@ -103,14 +122,49 @@ namespace StartBot
 
         public static ReactEventHandler _reh = new ReactEventHandler();
 
-        private async Task HandleBotReactions(Cacheable<IUserMessage, ulong> msg, ISocketMessageChannel chan, SocketReaction r)
+        private async Task HandleBotReactions(SocketMessageComponent smc)
         {
-            await _reh.Handle(msg, chan, r);
+            await _reh.Handle(smc);
         }
         public void RegisterEvents()
         {
             _client.Ready += Start;
-            _client.ReactionAdded += HandleBotReactions;
+            //_client.ReactionAdded += HandleBotReactions;
+            _client.InteractionCreated += async (inter) =>
+            {
+                if (inter is SocketMessageComponent smc)
+                {
+                    if (smc.Data.CustomId == "STARTBOT_REFRESH")
+                    {
+                        await HandleBotReactions(smc);
+                        await smc.DeferAsync();
+                    }
+                }
+                if(inter is SocketSlashCommand cmd)
+                {
+                    if(cmd.CommandName == "deferstop")
+                    {
+                        var status = await ServerStateManager.Instance().GetState();
+
+                        if(status.InstanceState.Code == 16)
+                        {
+                            if(ServerStateManager.Instance().StopDeferred)
+                            {
+                                await cmd.RespondAsync("The stopping of the server has already been deferred.", ephemeral: false);
+                            }
+                            else
+                            {
+                                ServerStateManager.Instance().StopDeferred = true;
+                                await cmd.RespondAsync("The stopping of the server is now deferred for an extra five minutes.", ephemeral: false);
+                            }
+                        }
+                        else
+                        {
+                            await cmd.RespondAsync("The server is not running at the moment.", ephemeral: true);
+                        }
+                    }
+                }
+            };
         }
 
         private Task _client_Log(LogMessage l)
