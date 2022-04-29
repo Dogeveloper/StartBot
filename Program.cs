@@ -1,12 +1,14 @@
 ﻿
 using Amazon.EC2.Model;
 using Discord;
+using Discord.Rest;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using TraceLd.MineStatSharp;
 
 namespace StartBot
 {
@@ -67,10 +69,43 @@ namespace StartBot
                 var guild = _client.GetGuild(BotConfig.GetCachedConfig().Discord.GuildId);
 
                 var deferStopCommand = new SlashCommandBuilder();
+                var forceStartInstanceBuilder = new SlashCommandBuilder();
+                var forceStopInstanceBuilder = new SlashCommandBuilder();
+                var forceSyncBuilder = new SlashCommandBuilder();
 
                 deferStopCommand.WithName("deferstop");
                 deferStopCommand.WithDescription("Defers the server from stopping for five minutes.");
-                await guild.CreateApplicationCommandAsync(deferStopCommand.Build());
+                deferStopCommand.WithDefaultPermission(true);
+
+                forceStartInstanceBuilder.WithName("forcestartinstance");
+                forceStartInstanceBuilder.WithDescription("Admin only");
+                forceStartInstanceBuilder.WithDefaultPermission(false);
+
+                forceStopInstanceBuilder.WithName("forcestopinstance");
+                forceStopInstanceBuilder.WithDescription("Admin only");
+                forceStopInstanceBuilder.WithDefaultPermission(false);
+
+                forceSyncBuilder.WithName("forcesync");
+                forceSyncBuilder.WithDescription("Admin only");
+                forceSyncBuilder.WithDefaultPermission(false);
+
+                var deferStopCommandCmd = await Program._client.Rest.CreateGuildCommand(deferStopCommand.Build(), 795714783801245706);
+                var forceStartInstance = await Program._client.Rest.CreateGuildCommand(forceStartInstanceBuilder.Build(), 795714783801245706);
+                var forceStopInstance = await Program._client.Rest.CreateGuildCommand(forceStopInstanceBuilder.Build(), 795714783801245706);
+
+                var forcesync = await Program._client.Rest.CreateGuildCommand(forceSyncBuilder.Build(), 795714783801245706);
+
+                await forceStartInstance.ModifyCommandPermissions(new ApplicationCommandPermission[] {
+                    new ApplicationCommandPermission(164890197237039104, ApplicationCommandPermissionTarget.User, true)
+                });
+
+                await forceStopInstance.ModifyCommandPermissions(new ApplicationCommandPermission[] {
+                    new ApplicationCommandPermission(164890197237039104, ApplicationCommandPermissionTarget.User, true)
+                });
+
+                await forcesync.ModifyCommandPermissions(new ApplicationCommandPermission[] {
+                    new ApplicationCommandPermission(164890197237039104, ApplicationCommandPermissionTarget.User, true)
+                });
 
                 if (guild.GetTextChannel(BotConfig.GetCachedConfig().Discord.MessageChannelId) != null)
                 {
@@ -162,6 +197,26 @@ namespace StartBot
                         {
                             await cmd.RespondAsync("The server is not running at the moment.", ephemeral: true);
                         }
+                    }
+                    if(cmd.CommandName == "forcestartinstance")
+                    {
+                        var request = new StartInstancesRequest();
+                        request.InstanceIds = new List<string>()
+                        {
+                            BotConfig.GetCachedConfig().Aws.EC2InstanceId
+                        };
+                        var response = await ServerStateManager.Instance().client.StartInstancesAsync(request);
+                        await cmd.RespondAsync(response.ToString(), ephemeral: true);
+                    }
+                    if (cmd.CommandName == "forcestopinstance")
+                    {
+                        var request = new StopInstancesRequest();
+                        request.InstanceIds = new List<string>()
+                        {
+                            BotConfig.GetCachedConfig().Aws.EC2InstanceId
+                        };
+                        var response = await ServerStateManager.Instance().client.StopInstancesAsync(request);
+                        await cmd.RespondAsync(response.ToString(), ephemeral: true);
                     }
                 }
             };

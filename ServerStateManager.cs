@@ -25,6 +25,8 @@ namespace StartBot
 
         public bool StopDeferred = false;
 
+        public bool StopServerRunning = false;
+
 
         public static ServerStateManager Instance()
         {
@@ -68,6 +70,7 @@ namespace StartBot
         
         public async Task StopServer()
         {
+
             while(true)
             {
                 await Task.Delay((int) BotConfig.GetCachedConfig().PollingDelay);
@@ -114,6 +117,7 @@ namespace StartBot
                 }
             }
             IsWorking = false;
+
         }
 
         public async Task StartServer()
